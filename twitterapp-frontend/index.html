@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Twitter app</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.13/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/vue.resource/1.3.1/vue-resource.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
+    <link href="/zemoga//twitterapp-frontend/assets/css/default/app.min.css" rel="stylesheet"/>
+    <link href="/zemoga//twitterapp-frontend/assets/css/default/theme/lime.min.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <div class="col-md-12" id="content">
+    </div>
+      
+    <script>
+      Vue.component('tweet-section', {
+        props: ['tweet','twitterusername'],
+        template: 
+              `<div class="widget-list rounded mb-4" data-id="widget">
+                  <div class="widget-list-item">
+                      <div class="widget-list-media">
+                          <img v-bind:src="tweet.user.profileImageUrl" width="130px" style="border-radius:150px;" height="130px" />
+                      </div>
+                      <div class="widget-list-content row">
+                          <h4 class="widget-list-title">{{tweet.user.name}} <span class="widget-list-desc">@{{twitterusername}} - {{tweet.createdAt}}</span></h4>
+                          {{tweet.text}}
+                      </div>
+                      <div class="widget-list-action">
+                          <a href="#" data-bs-toggle="dropdown" class="text-gray-500" aria-expanded="false"><i class="fa fa-ellipsis-h fs-14px"></i></a>
+                      </div>
+                  </div>
+              </div>`
+      })
+
+      var usr = new Vue({
+        el: "#content",
+        created: function(){
+            this.showUsers();
+        },
+        data(){
+          return{
+              users: "",
+              profile: false,
+              user: "",
+              tweets: "",
+              editProfile: false,
+              edited: false,
+              form: {
+                idPortfolio: "",
+                names: "",
+                lastnames: "",
+                description: "",
+                worksummary: "",
+              },
+              portfolio: "",
+              errors:[],
+          }
+        },
+        methods: {
+
+          showUsers: function() {
+                          
+                          this.$http.get('http://localhost:8080/tweetapp/users').then(function(response){
+                            if(response.status == "200"){
+                                console.log(response);
+                                this.users = response.body; // use self instead of this
+                            }
+                          })
+          },
+          showProfile: function(userdata) {
+            
+            this.edited = false;
+            this.editProfile = false;
+        
+            this.profile = true;
+            this.user = userdata;
+            let params = "";
+                    this.$http.get('http://localhost:8080/tweetapp/tweets',
+                              {params: {id: this.user.twitter_user_name}}).then(function(response){
+                                      if(response.status == "200"){
+                                          console.log(response);
+                                          this.tweets = response.body;
+                                      }    
+                            })
+          },
+          showEdit: function(){
+              this.editProfile = !this.editProfile;
+              this.form.idPortfolio = this.user.id;
+              this.form.names = this.user.names;
+              this.form.lastnames = this.user.lastnames;
+              this.form.worksummary = this.user.experiencieSummary;
+              this.form.description = this.user.description;
+              
+          },
+          sendForm: function(){
+            
+            var id = this.user.idPortfolio;
+            var fnames = document.getElementById('names').value;
+            var flastnames = document.getElementById('lastnames').value;
+            var fdescription = document.getElementById('description').value;
+            var fworksummary = document.getElementById('worksummary').value;
+ 
+            this.$http.put(`http://localhost:8080/tweetapp/profile/${id}`,
+                            
+              this.form).then(function(response){
+                                  this.edited = true;
+                                  this.showUsers();
+                            });
+            
+            
+          }
+        },
+        template:  `<div class="row">
+                      <div class="col-md-2 col-lg-2">
+                        <div class="card mb-4 border-0" >
+                          <ul class="list-group list-group-flush">
+                            <li v-for="(user,index) in users" :key="index" class="list-group-item" style="cursor:pointer" @click="showProfile(user)">{{user.names}} {{user.lastnames}}</li><div class="menu-caret"></div>
+                          </ul>
+                        </div>
+                      </div>
+                      <div v-if="profile" class="col-md-5 col-lg-5">
+                        <div class="card" style="margin-top:17px">
+                          <div class="card-body">
+                            <img v-bind:src="user.image_url" width="130px" height="130px" />
+                            <h5 class="card-title">{{user.title}}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">Description</h6>
+                            <p class="card-text">{{user.description}}</p>
+                            <h6 class="card-subtitle mb-2 text-muted">My Work experiencie</h6>
+                            <p class="card-text">{{user.experiencieSummary}}</p>
+                            <div class="form-check form-switch mb-2" >
+                              <input class="form-check-input" style="cursor:pointer" v-model="editProfile" type="checkbox" id="editp" @click="showEdit()">
+                              <label class="form-check-label" style="cursor:pointer" for="editp">Editar datos de perfil</label>
+                            </div>
+                          </div>
+                          <tweet-section v-for="(data,index) in tweets.slice(0, 5)" :key="index" :tweet="data" :twitterusername="user.twitter_user_name"></tweet-section>
+                        </div>
+                      </div>
+                      <div v-if="editProfile" class="col-md-4 col-lg-4">
+                        <div v-if="profile"class="card" style="margin-top:17px">
+                          <div class="panel panel-info" data-sortable-id="form-stuff-11">
+                            <div class="panel-heading ui-sortable-handle">
+                                <h5 class="panel-title">Editar Perfil</h5>
+                                <div class="panel-heading-btn">
+                                    <a href="javascript:;" class="btn btn-xs btn-icon btn-danger" data-toggle="panel-remove"><i class="fa fa-times"></i></a>
+                                </div>
+                            </div>
+                            <div class="panel-body">
+                             <form method="POST" @submit.prevent="sendForm" id="pform">
+                                <fieldset>
+                                    <div class="mb-3">
+                                      <input type="hidden" v-model="form.idPortfolio" >
+                                      <label class="form-label" for="names"><b>Names</b></label>
+                                      <input class="form-control" id="names" type="text" v-model="form.names" placeholder="Enter names">
+                                    </div>
+                                    <div class="mb-3">
+                                      <label class="form-label" for="lastnames"><b>Lastnames</b></label>
+                                      <input class="form-control" id="lastnames"  type="text" v-model="form.lastnames"  placeholder="Enter lastnames">
+                                    </div>
+                                    <div class="mb-3">
+                                      <label class="form-label" ><b>Work Experience</b></label>
+                                      <textarea class="form-control" id="worksummary" v-model="form.worksummary" rows="4"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                      <label class="form-label" for="desc"><b>Description</b></label>
+                                      <textarea class="form-control" id="description" v-model="form.description" rows="4"></textarea>
+                                    </div>
+                                    <br/>
+                                    <button class="btn btn-primary"><i class="fa fa-edit fa-2z"></i> Actualizar</button>
+                                    <div class="alert-success" v-if="edited">Datos actualizados</div>
+                                </fieldset>
+                             </form>
+                              
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                   `
+      });
+    </script>
+    <script src="/zemoga//twitterapp-frontend/assets/js/app.min.js"></script>
+    <script src="/zemoga//twitterapp-frontend/assets/js/default.min.js"></script>
+  </body>
+</html>
